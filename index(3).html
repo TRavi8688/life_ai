@@ -1,0 +1,1316 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LIFE AI - Premium Experience</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuzzball@2.0.0/dist/fuzzball.min.js"></script>
+    <style>
+        .app-container {
+            max-width: 450px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: #f1f3f6;
+            color: #212121;
+            position: relative;
+            overflow-x: hidden;
+            font-family: 'Roboto', sans-serif;
+        }
+        .nav-active {
+            color: #2874F0;
+            transform: translateY(-5px);
+        }
+        nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            max-width: 450px;
+            height: 60px;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            border-top: 1px solid #e0e0e0;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+        }
+        #cartItems {
+            display: none;
+            position: absolute;
+            top: 40px;
+            right: 0;
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            width: 200px;
+            z-index: 20;
+        }
+        #chatbotDialog {
+            display: none;
+            position: fixed;
+            bottom: 60px;
+            width: 100%;
+            max-width: 450px;
+            background: #ffffff;
+            padding: 16px;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.3);
+            z-index: 30;
+        }
+        #chatbotInput {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: #f1f3f6;
+            color: #212121;
+        }
+        #chatbotMessages {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 8px;
+            padding: 8px;
+        }
+        .chatbot-message {
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+        }
+        .user-message {
+            background: #2874F020;
+            text-align: right;
+        }
+        .bot-message {
+            background: #e0e0e0;
+        }
+        .blink {
+            animation: blink 1s ease-in-out 3;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .movies-section {
+            background: linear-gradient(180deg, #000000, #1a1a1a);
+            padding-bottom: 24px;
+            min-height: 100vh;
+            font-family: 'Roboto', sans-serif;
+        }
+        .movies-section .hero-banner {
+            width: 100%;
+            height: 300px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 230, 118, 0.5);
+            transition: transform 0.3s ease;
+        }
+        .movies-section .hero-banner:hover {
+            transform: scale(1.02);
+        }
+        .movies-section .hero-overlay {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            padding: 16px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .movies-section .hero-overlay h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .movies-section .hero-overlay p {
+            font-size: 0.9rem;
+            color: #e0e0e0;
+        }
+        .movies-section .hero-overlay button {
+            background: #00e676;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+        .movies-section .hero-overlay button:hover {
+            background: #00c853;
+        }
+        .movies-section .category-dropdown {
+            position: sticky;
+            top: 60px;
+            z-index: 10;
+            background: #1a237e;
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .movies-section .category-dropdown select {
+            width: 100%;
+            padding: 8px;
+            background: #1a237e;
+            color: white;
+            border: 1px solid #00e676;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .movies-section .subsection-title {
+            background: linear-gradient(90deg, #1a237e, transparent);
+            padding: 12px;
+            margin: 16px 0;
+            border-left: 4px solid #00e676;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            color: white;
+        }
+        .movies-section .item-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            flex: 0 0 120px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: #1e293b;
+        }
+        .movies-section .item-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 230, 118, 0.5);
+        }
+        .movies-section .item-image {
+            width: 100%;
+            height: 160px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+        }
+        .movies-section .item-details {
+            padding: 8px;
+            text-align: center;
+        }
+        .movies-section .item-details p {
+            font-size: 0.8rem;
+            color: white;
+        }
+        .movies-section .item-details button {
+            background: #00e676;
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            transition: background 0.3s ease;
+        }
+        .movies-section .item-details button:hover {
+            background: #00c853;
+        }
+        .movies-section .carousel {
+            scroll-behavior: smooth;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: nowrap;
+            width: 100%;
+            padding-bottom: 16px;
+            display: flex;
+            gap: 12px;
+        }
+        .movies-section .carousel::-webkit-scrollbar {
+            height: 8px;
+        }
+        .movies-section .carousel::-webkit-scrollbar-thumb {
+            background: #00e676;
+            border-radius: 4px;
+        }
+        .groceries-section {
+            background: linear-gradient(180deg, #e6ffea, #f1f3f6);
+            padding: 16px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .groceries-section .subsection-title {
+            background: linear-gradient(90deg, #22c55e, transparent);
+            padding: 12px;
+            margin: 16px 0;
+            border-left: 4px solid #22c55e;
+            font-weight: 500;
+        }
+        .groceries-section .fresh-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #22c55e;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .groceries-section .item-image {
+            width: 100%;
+            height: 120px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+        }
+        .groceries-section .item-card {
+            background: #ffffff;
+            color: #212121;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            flex: 0 0 160px;
+        }
+        .groceries-section .item-card:hover {
+            transform: translateY(-5px);
+        }
+        .groceries-section .item-details {
+            padding: 8px;
+            text-align: center;
+        }
+        .groceries-section .item-details p {
+            font-size: 0.8rem;
+            color: #212121;
+        }
+        .groceries-section .item-details button {
+            background: #22c55e;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            transition: background 0.3s ease;
+        }
+        .groceries-section .item-details button:hover {
+            background: #16a34a;
+        }
+        .groceries-section .filter-button.active {
+            background: #22c55e;
+        }
+        .groceries-section .carousel {
+            scroll-behavior: smooth;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: nowrap;
+            width: 100%;
+            padding-bottom: 16px;
+            display: flex;
+            gap: 12px;
+        }
+        .groceries-section .carousel::-webkit-scrollbar {
+            height: 8px;
+        }
+        .groceries-section .carousel::-webkit-scrollbar-thumb {
+            background: #22c55e;
+            border-radius: 4px;
+        }
+        .electronics-section {
+            background: linear-gradient(180deg, #1A1E2E, #2E3440);
+            padding: 16px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .electronics-section .hero-banner {
+            width: 100%;
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            position: relative;
+            box-shadow: 0 0 5px 2px #00FFFF;
+            transition: transform 0.3s ease;
+        }
+        .electronics-section .hero-banner:hover {
+            transform: scale(1.02);
+        }
+        .electronics-section .hero-overlay {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+            padding: 12px;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: center;
+        }
+        .electronics-section .hero-overlay h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00FFFF;
+            text-transform: uppercase;
+        }
+        .electronics-section .hero-overlay button {
+            background: transparent;
+            color: #FFFFFF;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            text-transform: uppercase;
+        }
+        .electronics-section .hero-overlay button:hover {
+            color: #00FFFF;
+        }
+        .electronics-section .subsection-title {
+            padding: 12px;
+            margin: 16px 0;
+            border-left: 4px solid #00FFFF;
+            font-weight: 500;
+            color: #FFFFFF;
+            text-transform: uppercase;
+        }
+        .electronics-section .item-image {
+            width: 100%;
+            height: 120px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+        }
+        .electronics-section .item-card {
+            background: #2E3440;
+            color: #FFFFFF;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            flex: 0 0 160px;
+        }
+        .electronics-section .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 10px #00FFFF;
+        }
+        .electronics-section .item-details {
+            padding: 8px;
+            text-align: center;
+        }
+        .electronics-section .item-details p {
+            font-size: 0.8rem;
+            color: #FFFFFF;
+        }
+        .electronics-section .item-details button {
+            background: #00FFFF;
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            transition: background 0.3s ease;
+        }
+        .electronics-section .item-details button:hover {
+            background: #00CED1;
+        }
+        .electronics-section .carousel {
+            scroll-behavior: smooth;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: nowrap;
+            width: 100%;
+            padding-bottom: 16px;
+            display: flex;
+            gap: 12px;
+        }
+        .electronics-section .carousel::-webkit-scrollbar {
+            height: 8px;
+        }
+        .electronics-section .carousel::-webkit-scrollbar-thumb {
+            background: #00FFFF;
+            border-radius: 4px;
+        }
+        .fashion-section {
+            background: #f1f3f6;
+            padding: 16px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .fashion-section .hero-banner {
+            width: 100%;
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .fashion-section .hero-banner:hover {
+            transform: scale(1.02);
+        }
+        .fashion-section .hero-overlay {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(74, 36, 94, 0.7), transparent);
+            padding: 12px;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .fashion-section .hero-overlay h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .fashion-section .hero-overlay button {
+            background: #FF8C00;
+            color: #212121;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+        .fashion-section .hero-overlay button:hover {
+            background: #F57C00;
+        }
+        .fashion-section .category-filters {
+            position: sticky;
+            top: 60px;
+            z-index: 10;
+            background: #ffffff;
+            padding: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .fashion-section .category-filters button {
+            padding: 8px 16px;
+            background: #e0e0e0;
+            color: #212121;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        .fashion-section .category-filters button.active {
+            background: #FF3D68;
+            color: #ffffff;
+        }
+        .fashion-section .category-filters button:hover {
+            background: #FF3D68;
+            color: #ffffff;
+        }
+        .fashion-section .subsection-title {
+            font-weight: 500;
+            color: #212121;
+            margin: 16px 0 8px;
+            font-size: 1.1rem;
+        }
+        .fashion-section .item-card {
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            flex: 0 0 140px;
+        }
+        .fashion-section .item-card:hover {
+            transform: translateY(-5px);
+        }
+        .fashion-section .item-image {
+            width: 100%;
+            height: 160px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .fashion-section .item-details {
+            padding: 8px;
+            text-align: left;
+        }
+        .fashion-section .item-details p {
+            font-size: 0.8rem;
+            color: #212121;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .fashion-section .item-details .price {
+            font-weight: 500;
+            color: #E91E63;
+        }
+        .fashion-section .item-details .original-price {
+            text-decoration: line-through;
+            color: #878787;
+            font-size: 0.7rem;
+        }
+        .fashion-section .item-details .discount {
+            color: #E91E63;
+            font-size: 0.7rem;
+        }
+        .fashion-section .item-details button {
+            background: #FF3D68;
+            color: #ffffff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            transition: background 0.3s ease;
+            width: 100%;
+            margin-top: 4px;
+        }
+        .fashion-section .item-details button:hover {
+            background: #E6335A;
+        }
+        .fashion-section .carousel {
+            scroll-behavior: smooth;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: nowrap;
+            width: 100%;
+            padding-bottom: 16px;
+            display: flex;
+            gap: 12px;
+        }
+        .fashion-section .carousel::-webkit-scrollbar {
+            height: 8px;
+        }
+        .fashion-section .carousel::-webkit-scrollbar-thumb {
+            background: #FF3D68;
+            border-radius: 4px;
+        }
+        .fashion-section .womens-western .item-card {
+            background: #FFF5F5;
+        }
+        .fashion-section .womens-western .item-details .price,
+        .fashion-section .womens-western .item-details .discount {
+            color: #FF69B4;
+        }
+        .fashion-section .womens-western .item-details .original-price {
+            color: #B0B0B0;
+        }
+        .fashion-section .womens-western .item-details button {
+            background: #FFC1CC;
+            color: #212121;
+        }
+        .fashion-section .womens-western .item-details button:hover {
+            background: #FFB6C1;
+        }
+        .fashion-section .womens-western .carousel::-webkit-scrollbar-thumb {
+            background: #FF69B4;
+        }
+        .fashion-section .mens-western .item-card {
+            background: #1C2526;
+        }
+        .fashion-section .mens-western .item-details .price,
+        .fashion-section .mens-western .item-details .discount {
+            color: #00B7EB;
+        }
+        .fashion-section .mens-western .item-details .original-price {
+            color: #878787;
+        }
+        .fashion-section .mens-western .item-details button {
+            background: #2A3F5F;
+            color: #ffffff;
+        }
+        .fashion-section .mens-western .item-details button:hover {
+            background: #3B5998;
+        }
+        .fashion-section .mens-western .carousel::-webkit-scrollbar-thumb {
+            background: #00B7EB;
+        }
+        .fashion-section .kids-fashion .item-card {
+            background: #FFFFFF;
+        }
+        .fashion-section .kids-fashion .item-details .price,
+        .fashion-section .kids-fashion .item-details .discount {
+            color: #FFCA28;
+        }
+        .fashion-section .kids-fashion .item-details .original-price {
+            color: #B0B0B0;
+        }
+        .fashion-section .kids-fashion .item-details button {
+            background: #FF5252;
+            color: #ffffff;
+        }
+        .fashion-section .kids-fashion .item-details button:hover {
+            background: #F44336;
+        }
+        .fashion-section .kids-fashion .carousel::-webkit-scrollbar-thumb {
+            background: #FFCA28;
+        }
+        .lazy-load {
+            background: #e0e0e0;
+            transition: opacity 0.3s ease;
+        }
+        .lazy-load.loaded {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="p-4 bg-white flex items-center justify-between sticky top-0 z-10 shadow">
+            <h1 class="text-xl font-bold text-[#2874F0]">LIFE AI</h1>
+            <div class="flex items-center gap-3">
+                <button class="p-2" id="chatbotButton">🤖</button>
+                <button class="relative p-2" id="cartButton">
+                    🛒
+                    <span class="absolute -top-1 -right-1 bg-[#FF8C00] text-xs rounded-full w-4 h-4 flex items-center justify-center text-[#212121]" id="cartCount">0</span>
+                </button>
+                <div id="cartItems"></div>
+            </div>
+        </header>
+
+        <div id="chatbotDialog">
+            <div id="chatbotMessages"></div>
+            <div class="flex gap-2">
+                <input type="text" id="chatbotInput" placeholder="Say 'kurta', 'tshirt', or 'apples'...">
+                <button id="voiceButton" class="p-2 bg-[#FF3D68] text-white rounded hover:bg-[#E6335A]">🎤</button>
+                <button id="sendButton" class="p-2 bg-[#FF3D68] text-white rounded hover:bg-[#E6335A]">Send</button>
+            </div>
+        </div>
+
+        <main class="p-4 pb-20" id="mainContent"></main>
+
+        <nav>
+            <button class="nav-button" data-section="movies" aria-label="Movies">🎥 Movies</button>
+            <button class="nav-button" data-section="fashion" aria-label="Fashion">👗 Fashion</button>
+            <button class="nav-button" data-section="electronics" aria-label="Electronics">📱 Tech</button>
+            <button class="nav-button" data-section="groceries" aria-label="Groceries">🛒 Grocery</button>
+        </nav>
+    </div>
+
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+            return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    var filteredData = jsonData.filter(row => row.some(filledCell));
+                    var headerRowIndex = filteredData.findIndex((row, index) =>
+                        row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                    );
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                        headerRowIndex = 0;
+                    }
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+
+        const sections = {
+            movies: {
+                title: "Movie Premieres",
+                subsections: [
+                    {
+                        name: "Epic Adventures",
+                        items: [
+                            { name: "Baahubali", price: 199, category: 'movies', image: "https://via.placeholder.com/200x300?text=Baahubali" },
+                            { name: "RRR", price: 299, category: 'movies', image: "https://via.placeholder.com/200x300?text=RRR" },
+                            { name: "Avengers: Endgame", price: 249, category: 'movies', image: "https://via.placeholder.com/200x300?text=Avengers+Endgame" },
+                            { name: "The Lord of the Rings", price: 279, category: 'movies', image: "https://via.placeholder.com/200x300?text=Lord+of+the+Rings" },
+                            { name: "Gladiator", price: 229, category: 'movies', image: "https://via.placeholder.com/200x300?text=Gladiator" },
+                            { name: "Jurassic Park", price: 209, category: 'movies', image: "https://via.placeholder.com/200x300?text=Jurassic+Park" },
+                            { name: "Black Panther", price: 259, category: 'movies', image: "https://via.placeholder.com/200x300?text=Black+Panther" },
+                            { name: "Pirates of the Caribbean", price: 239, category: 'movies', image: "https://via.placeholder.com/200x300?text=Pirates+Caribbean" }
+                        ]
+                    },
+                    {
+                        name: "Sci-Fi Epics",
+                        items: [
+                            { name: "Interstellar", price: 259, category: 'movies', image: "https://via.placeholder.com/200x300?text=Interstellar" },
+                            { name: "Dune", price: 289, category: 'movies', image: "https://via.placeholder.com/200x300?text=Dune" },
+                            { name: "Star Wars: The Force Awakens", price: 269, category: 'movies', image: "https://via.placeholder.com/200x300?text=Star+Wars" },
+                            { name: "Blade Runner 2049", price: 239, category: 'movies', image: "https://via.placeholder.com/200x300?text=Blade+Runner" },
+                            { name: "The Matrix", price: 219, category: 'movies', image: "https://via.placeholder.com/200x300?text=The+Matrix" },
+                            { name: "Avatar", price: 299, category: 'movies', image: "https://via.placeholder.com/200x300?text=Avatar" },
+                            { name: "Inception", price: 249, category: 'movies', image: "https://via.placeholder.com/200x300?text=Inception" }
+                        ]
+                    },
+                    {
+                        name: "Historical Epics",
+                        items: [
+                            { name: "Padmaavat", price: 249, category: 'movies', image: "https://via.placeholder.com/200x300?text=Padmaavat" },
+                            { name: "Troy", price: 229, category: 'movies', image: "https://via.placeholder.com/200x300?text=Troy" },
+                            { name: "Braveheart", price: 239, category: 'movies', image: "https://via.placeholder.com/200x300?text=Braveheart" },
+                            { name: "Kingdom of Heaven", price: 219, category: 'movies', image: "https://via.placeholder.com/200x300?text=Kingdom+of+Heaven" },
+                            { name: "The Last Samurai", price: 209, category: 'movies', image: "https://via.placeholder.com/200x300?text=Last+Samurai" },
+                            { name: "Spartacus", price: 199, category: 'movies', image: "https://via.placeholder.com/200x300?text=Spartacus" },
+                            { name: "Ben-Hur", price: 229, category: 'movies', image: "https://via.placeholder.com/200x300?text=Ben-Hur" }
+                        ]
+                    },
+                    {
+                        name: "Action Epics",
+                        items: [
+                            { name: "KGF", price: 209, category: 'movies', image: "https://via.placeholder.com/200x300?text=KGF" },
+                            { name: "Mad Max: Fury Road", price: 259, category: 'movies', image: "https://via.placeholder.com/200x300?text=Mad+Max" },
+                            { name: "Die Hard", price: 199, category: 'movies', image: "https://via.placeholder.com/200x300?text=Die+Hard" },
+                            { name: "John Wick", price: 229, category: 'movies', image: "https://via.placeholder.com/200x300?text=John+Wick" },
+                            { name: "War", price: 249, category: 'movies', image: "https://via.placeholder.com/200x300?text=War" },
+                            { name: "Mission: Impossible", price: 269, category: 'movies', image: "https://via.placeholder.com/200x300?text=Mission+Impossible" },
+                            { name: "The Dark Knight", price: 279, category: 'movies', image: "https://via.placeholder.com/200x300?text=Dark+Knight" }
+                        ]
+                    },
+                    {
+                        name: "Fantasy Epics",
+                        items: [
+                            { name: "Harry Potter", price: 279, category: 'movies', image: "https://via.placeholder.com/200x300?text=Harry+Potter" },
+                            { name: "The Hobbit", price: 269, category: 'movies', image: "https://via.placeholder.com/200x300?text=The+Hobbit" },
+                            { name: "The Chronicles of Narnia", price: 239, category: 'movies', image: "https://via.placeholder.com/200x300?text=Narnia" },
+                            { name: "The Witcher", price: 249, category: 'movies', image: "https://via.placeholder.com/200x300?text=The+Witcher" },
+                            { name: "Legend of the Seeker", price: 219, category: 'movies', image: "https://via.placeholder.com/200x300?text=Legend+Seeker" },
+                            { name: "Pan’s Labyrinth", price: 229, category: 'movies', image: "https://via.placeholder.com/200x300?text=Pans+Labyrinth" },
+                            { name: "Stardust", price: 209, category: 'movies', image: "https://via.placeholder.com/200x300?text=Stardust" }
+                        ]
+                    }
+                ]
+            },
+            fashion: {
+                title: "Fashion Hub",
+                subsections: [
+                    {
+                        name: "Men's Western",
+                        items: [
+                            { name: "Levi's T-Shirt", price: 499, originalPrice: 1499, discount: "66% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-tshirt" },
+                            { name: "Nike Joggers", price: 1299, originalPrice: 2999, discount: "56% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-joggers" },
+                            { name: "Puma Sneakers", price: 2499, originalPrice: 4999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-sneakers" },
+                            { name: "Jack & Jones Jacket", price: 1999, originalPrice: 3999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-jacket" },
+                            { name: "HRX Shorts", price: 399, originalPrice: 999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-shorts" },
+                            { name: "Roadster Shirt", price: 799, originalPrice: 1999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-shirt" },
+                            { name: "Adidas Cap", price: 599, originalPrice: 1499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-cap" },
+                            { name: "U.S. Polo Jeans", price: 1499, originalPrice: 2999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-jeans" },
+                            { name: "Vans Hoodie", price: 1599, originalPrice: 3499, discount: "54% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-hoodie" },
+                            { name: "Woodland Belt", price: 499, originalPrice: 999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-belt" }
+                        ]
+                    },
+                    {
+                        name: "Women's Western",
+                        items: [
+                            { name: "Zara Crop Top", price: 599, originalPrice: 1999, discount: "70% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-crop-top" },
+                            { name: "H&M Jeans", price: 999, originalPrice: 2499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-jeans" },
+                            { name: "Vero Moda Dress", price: 1499, originalPrice: 3999, discount: "62% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-dress" },
+                            { name: "Nike Sneakers", price: 2499, originalPrice: 4999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-sneakers" },
+                            { name: "Mango Jacket", price: 1999, originalPrice: 4999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-jacket" },
+                            { name: "Libas Skirt", price: 799, originalPrice: 1999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-skirt" },
+                            { name: "Aurelia Tunic", price: 699, originalPrice: 1799, discount: "61% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-tunic" },
+                            { name: "Harpa Top", price: 499, originalPrice: 1499, discount: "66% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-top" },
+                            { name: "W Jumpsuit", price: 1299, originalPrice: 2999, discount: "56% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-jumpsuit" },
+                            { name: "Fossil Bag", price: 1999, originalPrice: 3999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?womens-bag" }
+                        ]
+                    },
+                    {
+                        name: "Kids' Fashion",
+                        items: [
+                            { name: "Gini & Jony T-Shirt", price: 299, originalPrice: 799, discount: "62% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-tshirt" },
+                            { name: "Chicco Shorts", price: 399, originalPrice: 999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-shorts" },
+                            { name: "Lilliput Dress", price: 499, originalPrice: 1499, discount: "66% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-dress" },
+                            { name: "Puma Sneakers", price: 1499, originalPrice: 2999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-sneakers" },
+                            { name: "Mothercare Hoodie", price: 799, originalPrice: 1999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-hoodie" },
+                            { name: "Biba Kurta", price: 599, originalPrice: 1499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-kurta" },
+                            { name: "H&M Cap", price: 299, originalPrice: 699, discount: "57% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-cap" },
+                            { name: "Carter's Jeans", price: 699, originalPrice: 1799, discount: "61% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-jeans" },
+                            { name: "United Colors Jacket", price: 999, originalPrice: 2499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-jacket" },
+                            { name: "Peppermint Socks", price: 199, originalPrice: 499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?kids-socks" }
+                        ]
+                    },
+                    {
+                        name: "Indian Wear",
+                        items: [
+                            { name: "Libas Kurta", price: 799, originalPrice: 1999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?kurta" },
+                            { name: "Anand Saree", price: 1499, originalPrice: 3999, discount: "62% off", category: 'fashion', image: "https://picsum.photos/200/300?saree" },
+                            { name: "Biba Lehenga", price: 2499, originalPrice: 5999, discount: "58% off", category: 'fashion', image: "https://picsum.photos/200/300?lehenga" },
+                            { name: "W Sherwani", price: 1999, originalPrice: 4999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?sherwani" },
+                            { name: "Aurelia Palazzo", price: 699, originalPrice: 1799, discount: "61% off", category: 'fashion', image: "https://picsum.photos/200/300?palazzo" },
+                            { name: "Kuki Anarkali", price: 1299, originalPrice: 2999, discount: "56% off", category: 'fashion', image: "https://picsum.photos/200/300?anarkali" },
+                            { name: "Zinariya Dhoti", price: 599, originalPrice: 1499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?dhoti" },
+                            { name: "Manyavar Kurta", price: 999, originalPrice: 2499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?mens-kurta" },
+                            { name: "Soch Dupatta", price: 399, originalPrice: 999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?dupatta" },
+                            { name: "Fabindia Salwar", price: 799, originalPrice: 1999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?salwar" }
+                        ]
+                    },
+                    {
+                        name: "Accessories",
+                        items: [
+                            { name: "Titan Watch", price: 1999, originalPrice: 3999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?watch" },
+                            { name: "Fastrack Sunglasses", price: 999, originalPrice: 2499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?sunglasses" },
+                            { name: "Lino Perros Bag", price: 1499, originalPrice: 3499, discount: "57% off", category: 'fashion', image: "https://picsum.photos/200/300?bag" },
+                            { name: "Lavie Wallet", price: 599, originalPrice: 1499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?wallet" },
+                            { name: "Caprese Tote", price: 1999, originalPrice: 3999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?tote-bag" },
+                            { name: "Voylla Necklace", price: 499, originalPrice: 1299, discount: "61% off", category: 'fashion', image: "https://picsum.photos/200/300?necklace" },
+                            { name: "Wildcraft Backpack", price: 999, originalPrice: 2499, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?backpack" },
+                            { name: "Hidesign Belt", price: 799, originalPrice: 1999, discount: "60% off", category: 'fashion', image: "https://picsum.photos/200/300?belt" },
+                            { name: "Tanishq Earrings", price: 1499, originalPrice: 3499, discount: "57% off", category: 'fashion', image: "https://picsum.photos/200/300?earrings" },
+                            { name: "Skybags Luggage", price: 2499, originalPrice: 4999, discount: "50% off", category: 'fashion', image: "https://picsum.photos/200/300?luggage" }
+                        ]
+                    }
+                ]
+            },
+            electronics: {
+                title: "Tech Essentials",
+                subsections: [
+                    {
+                        name: "Smartphones",
+                        items: [
+                            { name: "iPhone 16", price: 79999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=iPhone+16" },
+                            { name: "Samsung Galaxy S24", price: 69999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Galaxy+S24" },
+                            { name: "OnePlus 12", price: 64999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=OnePlus+12" },
+                            { name: "Xiaomi 14", price: 59999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Xiaomi+14" },
+                            { name: "Google Pixel 8", price: 75999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Pixel+8" },
+                            { name: "Vivo X90", price: 54999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Vivo+X90" },
+                            { name: "Oppo Find X7", price: 67999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Oppo+Find+X7" },
+                            { name: "Realme GT 5", price: 49999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Realme+GT+5" }
+                        ]
+                    },
+                    {
+                        name: "Laptops",
+                        items: [
+                            { name: "MacBook Air M2", price: 119999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=MacBook+Air" },
+                            { name: "Dell XPS 13", price: 109999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Dell+XPS+13" },
+                            { name: "HP Spectre x360", price: 99999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=HP+Spectre" },
+                            { name: "Lenovo ThinkPad", price: 129999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=ThinkPad" },
+                            { name: "Asus ZenBook", price: 89999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=ZenBook" },
+                            { name: "Acer Predator", price: 139999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Acer+Predator" },
+                            { name: "Surface Laptop", price: 104999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Surface+Laptop" }
+                        ]
+                    },
+                    {
+                        name: "Tablets",
+                        items: [
+                            { name: "iPad Air 5", price: 54999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=iPad+Air" },
+                            { name: "Samsung Galaxy Tab", price: 69999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Galaxy+Tab" },
+                            { name: "Lenovo Tab P12", price: 39999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Lenovo+Tab" },
+                            { name: "Xiaomi Pad 6", price: 34999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Xiaomi+Pad" },
+                            { name: "Realme Pad X", price: 29999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Realme+Pad" },
+                            { name: "Amazon Fire HD", price: 24999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Fire+HD" },
+                            { name: "Huawei MatePad", price: 37999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Huawei+MatePad" }
+                        ]
+                    },
+                    {
+                        name: "Smartwatches",
+                        items: [
+                            { name: "Apple Watch 10", price: 39999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Apple+Watch" },
+                            { name: "Samsung Galaxy Watch", price: 34999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Galaxy+Watch" },
+                            { name: "Fitbit Versa 4", price: 22999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Fitbit+Versa" },
+                            { name: "Garmin Venu 3", price: 49999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Garmin+Venu" },
+                            { name: "Amazfit GTR 4", price: 19999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Amazfit+GTR" },
+                            { name: "Huawei Watch GT", price: 25999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Huawei+Watch" },
+                            { name: "TicWatch Pro", price: 27999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=TicWatch+Pro" }
+                        ]
+                    },
+                    {
+                        name: "Audio Devices",
+                        items: [
+                            { name: "AirPods Pro 2", price: 24999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=AirPods+Pro" },
+                            { name: "Sony WH-1000XM5", price: 34999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Sony+Headphones" },
+                            { name: "Bose QuietComfort", price: 29999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Bose+Headphones" },
+                            { name: "JBL Tune 760NC", price: 7999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=JBL+Tune" },
+                            { name: "Boat Rockerz 550", price: 4999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Boat+Rockerz" },
+                            { name: "Sennheiser CX", price: 12999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Sennheiser+CX" },
+                            { name: "Anker Soundcore", price: 6999, category: 'electronics', image: "https://via.placeholder.com/200x300?text=Soundcore" }
+                        ]
+                    }
+                ]
+            },
+            groceries: {
+                title: "Fresh Groceries",
+                subsections: [
+                    {
+                        name: "Fruits",
+                        items: [
+                            { name: "Apples", price: 199, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Apples" },
+                            { name: "Bananas", price: 49, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Bananas" },
+                            { name: "Mangoes", price: 299, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Mangoes" },
+                            { name: "Oranges", price: 149, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Oranges" },
+                            { name: "Grapes", price: 249, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Grapes" },
+                            { name: "Pomegranates", price: 349, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Pomegranates" },
+                            { name: "Pineapple", price: 199, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Pineapple" }
+                        ]
+                    },
+                    {
+                        name: "Vegetables",
+                        items: [
+                            { name: "Tomatoes", price: 59, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Tomatoes" },
+                            { name: "Potatoes", price: 39, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Potatoes" },
+                            { name: "Onions", price: 49, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Onions" },
+                            { name: "Carrots", price: 69, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Carrots" },
+                            { name: "Broccoli", price: 99, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Broccoli" },
+                            { name: "Spinach", price: 29, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Spinach" },
+                            { name: "Capsicum", price: 79, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Capsicum" }
+                        ]
+                    },
+                    {
+                        name: "Dairy",
+                        items: [
+                            { name: "Milk", price: 59, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Milk" },
+                            { name: "Cheese", price: 299, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Cheese" },
+                            { name: "Yogurt", price: 99, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Yogurt" },
+                            { name: "Butter", price: 149, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Butter" },
+                            { name: "Paneer", price: 199, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Paneer" },
+                            { name: "Cream", price: 129, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Cream" },
+                            { name: "Ghee", price: 499, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Ghee" }
+                        ]
+                    },
+                    {
+                        name: "Grains & Cereals",
+                        items: [
+                            { name: "Rice", price: 99, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Rice" },
+                            { name: "Wheat Flour", price: 49, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Wheat+Flour" },
+                            { name: "Oats", price: 149, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Oats" },
+                            { name: "Cornflakes", price: 199, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Cornflakes" },
+                            { name: "Quinoa", price: 299, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Quinoa" },
+                            { name: "Barley", price: 79, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Barley" },
+                            { name: "Millet", price: 89, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Millet" }
+                        ]
+                    },
+                    {
+                        name: "Snacks",
+                        items: [
+                            { name: "Chips", price: 49, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Chips" },
+                            { name: "Biscuits", price: 99, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Biscuits" },
+                            { name: "Namkeen", price: 79, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Namkeen" },
+                            { name: "Nuts Mix", price: 299, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Nuts+Mix" },
+                            { name: "Popcorn", price: 39, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Popcorn" },
+                            { name: "Chocolates", price: 199, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Chocolates" },
+                            { name: "Energy Bars", price: 149, category: 'groceries', image: "https://via.placeholder.com/200x300?text=Energy+Bars" }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        let cart = [];
+        let currentSection = 'movies';
+
+        function renderSection(sectionKey) {
+            const section = sections[sectionKey];
+            let html = '';
+
+            if (sectionKey === 'movies') {
+                html += `
+                    <div class="hero-banner" style="background-image: url('https://via.placeholder.com/450x300?text=Baahubali')">
+                        <div class="hero-overlay">
+                            <h2>Baahubali</h2>
+                            <p>Epic tale of valor and betrayal</p>
+                            <button onclick="addToCart({ name: 'Baahubali', price: 199, category: 'movies' })">Add to Cart - ₹199</button>
+                        </div>
+                    </div>
+                    <div class="category-dropdown">
+                        <select onchange="scrollToSubsection(this.value)">
+                            <option value="">Select Category</option>
+                            ${section.subsections.map(sub => `<option value="${sub.name}">${sub.name}</option>`).join('')}
+                        </select>
+                    </div>`;
+            } else if (sectionKey === 'fashion') {
+                html += `
+                    <div class="hero-banner" style="background-image: url('https://picsum.photos/450/200?fashion-sale')">
+                        <div class="hero-overlay">
+                            <h2>India Ka Fashion Capital</h2>
+                            <button onclick="scrollToSubsection('Men\\'s Western')">Shop Now</button>
+                        </div>
+                    </div>
+                    <div class="category-filters">
+                        <button class="active" onclick="scrollToSubsection('Men\\'s Western')">Men</button>
+                        <button onclick="scrollToSubsection('Women\\'s Western')">Women</button>
+                        <button onclick="scrollToSubsection('Kids\\' Fashion')">Kids</button>
+                        <button onclick="scrollToSubsection('Indian Wear')">Indian Wear</button>
+                        <button onclick="scrollToSubsection('Accessories')">Accessories</button>
+                    </div>`;
+            } else if (sectionKey === 'electronics') {
+                html += `
+                    <div class="hero-banner" style="background-image: url('https://picsum.photos/450/200?neon-city')">
+                        <div class="hero-overlay">
+                            <h2>LATEST TECH GEAR</h2>
+                            <button onclick="scrollToSubsection('Smartphones')">SHOP NOW</button>
+                        </div>
+                    </div>`;
+            }
+
+            section.subsections.forEach(subsection => {
+                let subsectionClass = '';
+                if (sectionKey === 'fashion') {
+                    if (subsection.name === "Men's Western") {
+                        subsectionClass = 'mens-western';
+                    } else if (subsection.name === "Women's Western") {
+                        subsectionClass = 'womens-western';
+                    } else if (subsection.name === "Kids' Fashion") {
+                        subsectionClass = 'kids-fashion';
+                    }
+                }
+
+                html += `<h2 class="subsection-title" id="${subsection.name}">${subsection.name}</h2>`;
+                if (sectionKey === 'groceries') {
+                    html += `
+                        <div class="flex gap-2 mb-4">
+                            <button class="filter-button px-4 py-2 bg-gray-200 rounded-full text-sm ${subsection.name === 'Fruits' ? 'active' : ''}" onclick="renderSection('groceries')">Fruits</button>
+                            <button class="filter-button px-4 py-2 bg-gray-200 rounded-full text-sm ${subsection.name === 'Vegetables' ? 'active' : ''}" onclick="renderSection('groceries')">Vegetables</button>
+                            <button class="filter-button px-4 py-2 bg-gray-200 rounded-full text-sm ${subsection.name === 'Dairy' ? 'active' : ''}" onclick="renderSection('groceries')">Dairy</button>
+                        </div>`;
+                }
+                html += `<div class="carousel">`;
+                subsection.items.forEach(item => {
+                    html += `
+                        <div class="item-card ${subsectionClass}">
+                            ${sectionKey === 'groceries' ? '<span class="fresh-badge">Fresh</span>' : ''}
+                            <div class="item-image lazy-load" style="background-image: url('${item.image}')" data-src="${item.image}"></div>
+                            <div class="item-details">
+                                <p>${item.name}</p>
+                                <p>₹${item.price}</p>
+                                ${item.originalPrice ? `
+                                    <p class="original-price">₹${item.originalPrice}</p>
+                                    <p class="discount">${item.discount}</p>
+                                ` : ''}
+                                <button onclick="addToCart({ name: '${item.name}', price: ${item.price}, category: '${item.category}'${item.originalPrice ? `, originalPrice: ${item.originalPrice}, discount: '${item.discount}'` : ''} })">Add to Cart</button>
+                            </div>
+                        </div>`;
+                });
+                html += `</div>`;
+            });
+
+            document.getElementById('mainContent').innerHTML = `<div class="${sectionKey}-section">${html}</div>`;
+            lazyLoadImages();
+        }
+
+        function lazyLoadImages() {
+            const images = document.querySelectorAll('.lazy-load');
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.style.backgroundImage = `url('${img.dataset.src}')`;
+                        img.classList.add('loaded');
+                        observer.unobserve(img);
+                    }
+                });
+            });
+            images.forEach(img => observer.observe(img));
+        }
+
+        function scrollToSubsection(subsection) {
+            const element = document.getElementById(subsection);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function addToCart(item) {
+            cart.push(item);
+            updateCart();
+        }
+
+        function updateCart() {
+            const cartCount = document.getElementById('cartCount');
+            const cartItems = document.getElementById('cartItems');
+            cartCount.textContent = cart.length;
+            let html = '<h3>Cart</h3>';
+            if (cart.length === 0) {
+                html += '<p>No items in cart</p>';
+            } else {
+                cart.forEach((item, index) => {
+                    html += `
+                        <div class="flex justify-between items-center">
+                            <span>${item.name} - ₹${item.price}</span>
+                            <button onclick="removeFromCart(${index})" class="text-red-500">Remove</button>
+                        </div>`;
+                });
+            }
+            cartItems.innerHTML = html;
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateCart();
+        }
+
+        function toggleCart() {
+            const cartItems = document.getElementById('cartItems');
+            cartItems.style.display = cartItems.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function toggleChatbot() {
+            const chatbotDialog = document.getElementById('chatbotDialog');
+            chatbotDialog.style.display = chatbotDialog.style.display === 'block' ? 'none' : 'block';
+            if (chatbotDialog.style.display === 'block') {
+                document.getElementById('chatbotInput').focus();
+            }
+        }
+
+        function sendMessage() {
+            const chatbotInput = document.getElementById('chatbotInput');
+            const chatbotMessages = document.getElementById('chatbotMessages');
+            const inputText = chatbotInput.value.trim();
+
+            if (!inputText) return;
+
+            const userMessage = document.createElement('div');
+            userMessage.className = 'chatbot-message user-message';
+            userMessage.textContent = inputText;
+            chatbotMessages.appendChild(userMessage);
+
+            const normalizedInput = inputText.toLowerCase().trim();
+            let response = '';
+            let matchedSection = null;
+            let matchedSubsection = null;
+            let matchedItem = null;
+            let bestScore = 0;
+
+            const allItems = [];
+            Object.keys(sections).forEach(sectionKey => {
+                sections[sectionKey].subsections.forEach(subsection => {
+                    subsection.items.forEach(item => {
+                        allItems.push({ section: sectionKey, subsection: subsection.name, item: item.name });
+                    });
+                });
+            });
+
+            allItems.forEach(({ section, subsection, item }) => {
+                const score = fuzzball.ratio(normalizedInput, item.toLowerCase());
+                if (score > bestScore && score > 80) {
+                    bestScore = score;
+                    matchedSection = section;
+                    matchedSubsection = subsection;
+                    matchedItem = item;
+                }
+            });
+
+            if (matchedItem) {
+                response = `Found "${matchedItem}" in ${matchedSection} > ${matchedSubsection}. Navigating there now!`;
+                renderSection(matchedSection);
+                setTimeout(() => scrollToSubsection(matchedSubsection), 500);
+            } else {
+                const suggestions = [];
+                allItems.forEach(({ section, subsection, item }) => {
+                    const score = fuzzball.ratio(normalizedInput, item.toLowerCase());
+                    if (score > 60 && suggestions.length < 3) {
+                        suggestions.push({ item, section, subsection, score });
+                    }
+                });
+                suggestions.sort((a, b) => b.score - a.score);
+
+                if (suggestions.length > 0) {
+                    response = `I couldn't find an exact match for "${inputText}". Did you mean:\n`;
+                    suggestions.forEach(s => {
+                        response += `- ${s.item} (in ${s.section} > ${s.subsection})\n`;
+                    });
+                    response += `Please try again or select one of these.`;
+                } else {
+                    response = `Sorry, I couldn't find anything matching "${inputText}". Try saying something like "kurta", "tshirt", or "apples".`;
+                }
+            }
+
+            const botMessage = document.createElement('div');
+            botMessage.className = 'chatbot-message bot-message';
+            botMessage.textContent = response;
+            chatbotMessages.appendChild(botMessage);
+
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+            chatbotInput.value = '';
+        }
+
+        function setupVoiceRecognition() {
+            const voiceButton = document.getElementById('voiceButton');
+            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'en-IN';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                voiceButton.addEventListener('click', () => {
+                    recognition.start();
+                    voiceButton.classList.add('blink');
+                });
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('chatbotInput').value = transcript;
+                    sendMessage();
+                };
+
+                recognition.onend = () => {
+                    voiceButton.classList.remove('blink');
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    voiceButton.classList.remove('blink');
+                    const botMessage = document.createElement('div');
+                    botMessage.className = 'chatbot-message bot-message';
+                    botMessage.textContent = 'Sorry, I couldn’t understand the voice input. Please try again.';
+                    document.getElementById('chatbotMessages').appendChild(botMessage);
+                };
+            } else {
+                voiceButton.disabled = true;
+                voiceButton.title = 'Voice recognition not supported in this browser';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSection(currentSection);
+            document.querySelectorAll('.nav-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('nav-active'));
+                    button.classList.add('nav-active');
+                    currentSection = button.dataset.section;
+                    renderSection(currentSection);
+                });
+            });
+            document.getElementById('cartButton').addEventListener('click', toggleCart);
+            document.getElementById('chatbotButton').addEventListener('click', toggleChatbot);
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+            document.getElementById('chatbotInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            setupVoiceRecognition();
+        });
+    </script>
+</body>
+</html>
